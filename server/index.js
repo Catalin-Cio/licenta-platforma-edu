@@ -28,6 +28,41 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// Ruta de Autentificare (Login)
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, parola } = req.body;
+
+    // 1. Căutăm utilizatorul după email
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(404).json({ message: "Utilizatorul nu există!" });
+    }
+
+    // 2. Verificăm parola (simplă pentru demo)
+    if (user.parola !== parola) {
+      return res.status(401).json({ message: "Parolă incorectă!" });
+    }
+
+    // 3. Trimitem datele înapoi (fără parolă)
+    res.json({
+      message: "Login reușit!",
+      user: {
+        id: user.id,
+        nume: user.nume,
+        email: user.email,
+        wallet: user.wallet,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Eroare server" });
+  }
+});
+
 // Această funcție conectează baza de date și ține serverul deschis
 sequelize.sync({ force: false })
     .then(() => {
