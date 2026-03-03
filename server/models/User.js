@@ -24,12 +24,11 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         defaultValue: 'student'
     },
-    // SISTEMUL DE GAMIFICATION
     wallet: {
         type: DataTypes.INTEGER,
-        defaultValue: 50, // Primește 50 credite la start
+        defaultValue: 50, 
         validate: {
-            min: 0 // Nu poate avea puncte negative
+            min: 0 
         }
     }
 });

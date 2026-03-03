@@ -7,11 +7,11 @@ const Purchase = sequelize.define('Purchase', {
         primaryKey: true,
         autoIncrement: true
     },
-    userId: { // Cine a cumpărat
+    userId: { 
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    resourceId: { // Ce a cumpărat
+    resourceId: { 
         type: DataTypes.INTEGER,
         allowNull: false
     }
