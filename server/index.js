@@ -4,7 +4,10 @@ const sequelize = require('./database');
 const { Op } = require('sequelize');
 const User = require('./models/User');
 const multer = require('multer');
+const Tesseract = require('tesseract.js');
+const fs = require('fs');
 const path = require('path');
+const PDFParser = require("pdf2json");
 const Resource = require('./models/Resource');
 const Purchase = require('./models/Purchase');
 const Session = require('./models/Session');
@@ -20,7 +23,21 @@ const storage = multer.diskStorage({
         cb(null, Date.now() + '-' + file.originalname);
     }
 });
-const upload = multer({ storage: storage });
+
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true); 
+    } else {
+        cb(new Error('Tip de fișier neacceptat. Doar PDF, JPG și PNG sunt permise.'), false); 
+    }
+};
+
+const upload = multer({ 
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: { fileSize: 10 * 1024 * 1024 } 
+});
 
 app.use('/uploads', express.static('uploads'));
 app.use(cors());
@@ -367,26 +384,107 @@ app.get('/api/notifications/:userId', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/notifications/:id/read', async (req, res) => {
-    try {
-        const notif = await Notification.findByPk(req.params.id);
-        if (notif) {
-            notif.citit = true;
-            await notif.save();
-        }
-        res.json({ message: "Citit" });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const topUsers = await User.findAll({
-            order: [['wallet', 'DESC']],
-            limit: 10,
-            attributes: ['id', 'nume', 'wallet']
+            order: [['wallet', 'DESC']], 
+            limit: 10, 
+            attributes: ['id', 'nume', 'wallet'] 
         });
         res.json(topUsers);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) {
+        console.error("Eroare la Top:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/chat', async (req, res) => {
+    try {
+        const { resourceId, messages, customContext } = req.body;
+        let contextText = customContext || "";
+
+        if (resourceId) {
+            const resource = await Resource.findByPk(resourceId);
+            if (resource) {
+                const filePath = path.join(__dirname, 'uploads', resource.numeFisier);
+                if (fs.existsSync(filePath)) {
+                    const ext = path.extname(resource.numeFisier).toLowerCase();
+                    
+                    if (ext === '.pdf') {
+                        contextText = await new Promise((resolve, reject) => {
+                            const pdfParser = new PDFParser(this, 1);
+                            pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+                            pdfParser.on("pdfParser_dataReady", pdfData => {
+                                const rawText = pdfParser.getRawTextContent();
+                                resolve(rawText.substring(0, 3000));
+                            });
+                            pdfParser.loadPDF(filePath);
+                        });
+                    } else if (['.jpg', '.jpeg', '.png'].includes(ext)) {
+                        const { data: { text } } = await Tesseract.recognize(filePath, 'eng+ron');
+                        contextText = text.substring(0, 3000);
+                    }
+                }
+            }
+        }
+
+        const systemMessage = {
+            role: "system",
+            content: `Ești un profesor universitar de nota 10, prietenos și concis. Te afli pe platforma EduPlatform. Răspunzi mereu în LIMBA ROMÂNĂ. Folosești emoji-uri ocazional. Dacă primești un text extras dintr-un curs/poză, folosește-l pentru a răspunde: 
+            """ ${contextText} """
+            Dacă textul e gol, ajută studentul folosind cunoștințele tale generale.`
+        };
+
+        const chatHistory = [systemMessage, ...messages];
+
+        const response = await fetch('http://localhost:11434/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'llama3',
+                messages: chatHistory,
+                stream: false
+            })
+        });
+
+        const data = await response.json();
+        res.json({ reply: data.message });
+
+    } catch (err) {
+        console.error("Eroare la AI Chat:", err);
+        res.status(500).json({ error: "Eroare la AI." });
+    }
+});
+
+app.post('/api/ai/extract', upload.single('fisier'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: "Niciun fișier primit." });
+        const filePath = req.file.path;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        let extractedText = "";
+
+        if (ext === '.pdf') {
+            const PDFParser = require("pdf2json");
+            extractedText = await new Promise((resolve, reject) => {
+                const pdfParser = new PDFParser(this, 1);
+                pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+                pdfParser.on("pdfParser_dataReady", pdfData => {
+                    resolve(pdfParser.getRawTextContent().substring(0, 3000));
+                });
+                pdfParser.loadPDF(filePath);
+            });
+        } else if (['.jpg', '.jpeg', '.png'].includes(ext)) {
+            const { data: { text } } = await Tesseract.recognize(filePath, 'eng+ron');
+            extractedText = text.substring(0, 3000);
+        }
+        
+        fs.unlinkSync(filePath);
+        
+        res.json({ text: extractedText });
+    } catch (err) {
+        console.error("Eroare la extragerea textului:", err);
+        res.status(500).json({ error: "Eroare la procesarea fișierului." });
+    }
 });
 
 sequelize.sync({ force: false }) 
