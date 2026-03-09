@@ -13,6 +13,7 @@ const Purchase = require('./models/Purchase');
 const Session = require('./models/Session');
 const Enrollment = require('./models/Enrollment');
 const Notification = require('./models/Notification'); 
+const bcrypt = require('bcrypt'); // <--- AICI AM IMPORTAT PACHETUL DE HASH
 
 const app = express();
 const storage = multer.diskStorage({
@@ -45,22 +46,38 @@ app.use(express.json());
 
 const PORT = 5000;
 
+// --- RUTA DE REGISTER CU HASH ---
 app.post('/api/register', async (req, res) => {
   try {
     const { nume, email, parola } = req.body;
-    const newUser = await User.create({ nume, email, parola });
+    
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) return res.status(400).json({ message: "Emailul este deja folosit!" });
+
+    // HASH-UIM PAROLA AICI
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(parola, saltRounds);
+
+    const newUser = await User.create({ nume, email, parola: hashedPassword });
     res.status(201).json(newUser);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Eroare la server" });
   }
 });
 
+// --- RUTA DE LOGIN CARE VERIFICĂ HASH-UL ---
 app.post('/api/login', async (req, res) => {
   try {
     const { email, parola } = req.body;
     const user = await User.findOne({ where: { email } });
+    
     if (!user) return res.status(404).json({ message: "Utilizatorul nu există!" });
-    if (user.parola !== parola) return res.status(401).json({ message: "Parolă incorectă!" });
+    
+    // COMPARĂM PAROLA SCRISĂ DE USER CU HASH-UL DIN BAZA DE DATE
+    const match = await bcrypt.compare(parola, user.parola);
+    if (!match) return res.status(401).json({ message: "Parolă incorectă!" });
+    
     res.json({
       message: "Login reușit!",
       user: {
@@ -68,12 +85,28 @@ app.post('/api/login', async (req, res) => {
         nume: user.nume,
         email: user.email,
         wallet: user.wallet,
-        role: user.role
+        role: user.role,
+        avatar: user.avatar
       }
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Eroare server" });
   }
+});
+
+app.post('/api/user/:id/avatar', upload.single('avatar'), async (req, res) => {
+    try {
+        const user = await User.findByPk(req.params.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+        
+        user.avatar = req.file.filename;
+        await user.save();
+        
+        res.json({ message: "Poză de profil actualizată!", avatar: user.avatar });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get('/api/admin/make-me-admin/:email', async (req, res) => {
@@ -430,7 +463,7 @@ app.post('/api/ai/chat', async (req, res) => {
 
         const systemMessage = {
             role: "system",
-            content: `Ești un profesor universitar de nota 10, prietenos și concis. Te afli pe platforma EduPlatform. Răspunzi mereu în LIMBA ROMÂNĂ. Folosești emoji-uri ocazional. Dacă primești un text extras dintr-un curs/poză, folosește-l pentru a răspunde: 
+            content: `Ești un profesor universitar de nota 10, prietenos și concis. Te afli pe platforma Mentorium. Răspunzi mereu în LIMBA ROMÂNĂ. Folosești emoji-uri ocazional. Dacă primești un text extras dintr-un curs/poză, folosește-l pentru a răspunde: 
             """ ${contextText} """
             Dacă textul e gol, ajută studentul folosind cunoștințele tale generale.`
         };

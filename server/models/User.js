@@ -26,10 +26,14 @@ const User = sequelize.define('User', {
     },
     wallet: {
         type: DataTypes.INTEGER,
-        defaultValue: 50, 
+        defaultValue: 50,
         validate: {
-            min: 0 
+            min: 0
         }
+    },
+    avatar: {
+        type: DataTypes.STRING,
+        defaultValue: 'default.png'
     }
 });
 
