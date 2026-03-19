@@ -64,10 +64,11 @@ function App() {
       }
   };
 
+  // UX 2026: Când ieși din cont, te lasă pe Landing Page, nu te forțează să te loghezi iar!
   const handleLogout = () => {
     localStorage.removeItem('user');
     setUser(null);
-    window.location.href = '/login'; 
+    window.location.href = '/'; 
   };
 
   const unreadCount = notifs.filter(n => !n.citit).length;
@@ -86,11 +87,11 @@ function App() {
       }}>
         <div style={{ flex: 1 }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.4rem', fontWeight: '900', color: 'white', textDecoration: 'none', textShadow: isScrolled ? '0px 2px 4px rgba(0,0,0,0.5)' : 'none', letterSpacing: '1px', whiteSpace: 'nowrap' }}>
-    <div style={{ background: 'linear-gradient(135deg, #3498db, #9b59b6)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
-        <span style={{ fontSize: '16px', color: 'white' }}>M</span>
-    </div>
-    Mentorium
-</Link>
+            <div style={{ background: 'linear-gradient(135deg, #3498db, #9b59b6)', borderRadius: '8px', width: '28px', height: '28px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+                <span style={{ fontSize: '16px', color: 'white' }}>M</span>
+            </div>
+            Mentorium
+          </Link>
         </div>
         
         <div style={{ flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>

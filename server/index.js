@@ -520,6 +520,21 @@ app.post('/api/ai/extract', upload.single('fisier'), async (req, res) => {
     }
 });
 
+app.put('/api/notifications/:id/read', async (req, res) => {
+    try {
+        const notif = await Notification.findByPk(req.params.id);
+        if (notif) {
+            notif.citit = true;
+            await notif.save();
+            res.json({ message: "Notificare marcată ca citită" });
+        } else {
+            res.status(404).json({ message: "Notificarea nu există" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 sequelize.sync({ force: false }) 
     .then(() => {
         console.log("Baza de date conectată!");
