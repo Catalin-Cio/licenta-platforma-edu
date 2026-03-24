@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -8,31 +8,19 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // --- LOGICA PENTRU CĂRȚI PE FUNDAL (2026 System) ---
-  const [books, setBooks] = useState([]);
   const bookEmojis = ['📚', '📖', '📕', '📗', '📘', '📙', '📓', '🎓'];
 
-  useEffect(() => {
-    // Generăm o carte nouă lent, una la 2.5 secunde
-    const interval = setInterval(() => {
-      const newBook = {
-        id: Date.now(),
-        emoji: bookEmojis[Math.floor(Math.random() * bookEmojis.length)],
-        startX: Math.random() * 90 + 5 + '%', // Poziție X aleatorie
-        fallDuration: Math.random() * 3 + 12, // Cad lent, între 12 și 15 secunde
-        rotation: Math.random() * 360 - 180, // Se rotesc aleatoriu în timpul căderii
-        size: Math.random() * 1 + 1.5 + 'rem', // Dimensiuni ușor diferite
-      };
-      setBooks((prev) => [...prev, newBook]);
-    }, 2500);
-
-    return () => clearInterval(interval);
+  const books = useMemo(() => {
+    return Array.from({ length: 15 }).map((_, i) => ({
+      id: i,
+      emoji: bookEmojis[Math.floor(Math.random() * bookEmojis.length)],
+      left: Math.floor(Math.random() * 90) + 5 + '%',
+      duration: Math.random() * 4 + 14,
+      delay: i * 1.8, 
+      rotation: Math.floor(Math.random() * 360) - 180,
+      size: (Math.random() * 0.8 + 1.5) + 'rem',
+    }));
   }, []);
-
-  // Funcție pentru curățarea memoriei după ce animația se termină
-  const removeBook = (id) => {
-    setBooks((prev) => prev.filter((book) => book.id !== id));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,15 +34,15 @@ function Login() {
         const data = await response.json();
         if (response.ok) {
             localStorage.setItem('user', JSON.stringify(data.user));
-            toast.success("✅ Autentificare reușită!");
+            toast.success("Autentificare reușită!");
             setTimeout(() => window.location.href = '/marketplace', 1000);
         } else {
-            toast.error(`❌ ${data.message}`);
+            toast.error(`${data.message}`);
             setIsLoading(false);
         }
     } catch (err) {
         console.error(err);
-        toast.error("❌ Eroare de conexiune cu serverul!");
+        toast.error("Eroare de conexiune cu serverul!");
         setIsLoading(false);
     }
   };
@@ -62,25 +50,28 @@ function Login() {
   return (
     <div style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
       
-      {/* --- SISTEMUL DE CĂRȚI ANIMATE PE FUNDAL --- */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: -1, pointerEvents: 'none' }}>
         {books.map((book) => (
           <motion.div
             key={book.id}
-            initial={{ y: '-10vh', x: book.startX, rotate: 0, opacity: 0 }}
+            initial={{ y: '-10vh', x: book.left, rotate: 0, opacity: 0 }}
             animate={{ 
                 y: '110vh', 
                 rotate: book.rotation, 
-                opacity: [0, 0.7, 0.7, 0] // Apar lent, stau vizibile, dispar lent jos
+                opacity: [0, 0.7, 0.7, 0] 
             }}
-            transition={{ duration: book.fallDuration, ease: 'linear' }}
-            onAnimationComplete={() => removeBook(book.id)} // Ștergem din DOM
+            transition={{ 
+                duration: book.duration, 
+                delay: book.delay, 
+                repeat: Infinity, 
+                ease: 'linear' 
+            }}
             style={{ 
                 position: 'absolute', 
                 fontSize: book.size, 
-                /* Umbra frumoasă solicitată, dă efect 3D */
-                textShadow: '0 5px 15px rgba(0,0,0,0.2)', 
-                zIndex: -1 
+                filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.2))', 
+                zIndex: -1,
+                willChange: 'transform, opacity'
             }}
           >
             {book.emoji}
@@ -88,15 +79,11 @@ function Login() {
         ))}
       </div>
 
-      {/* CARDUL LIQUID GLASS (Plutește subtil) */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }} 
-        animate={{ opacity: 1, scale: 1, y: [-5, 5, -5] }} 
-        transition={{ 
-            opacity: { duration: 0.5 }, 
-            scale: { duration: 0.5 },
-            y: { duration: 6, repeat: Infinity, ease: "easeInOut" }
-        }}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+        animate={{ opacity: 1, scale: 1, y: 0 }} 
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        whileHover={{ y: -8, boxShadow: '0 15px 40px 0 rgba(31, 38, 135, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 0 25px rgba(255, 255, 255, 0.5)' }}
         style={{ 
             width: '100%', 
             maxWidth: '380px', 
@@ -108,10 +95,10 @@ function Login() {
             boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.3), inset 0 0 25px rgba(255, 255, 255, 0.4)',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             textAlign: 'center',
-            zIndex: 1
+            zIndex: 1,
+            transition: 'box-shadow 0.3s ease, transform 0.3s ease'
         }}
       >
-         {/* Logo sticlos */}
          <div style={{ background: 'linear-gradient(135deg, rgba(52, 152, 219, 0.8), rgba(155, 89, 182, 0.8))', width: '56px', height: '56px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 25px auto', boxShadow: '0 8px 20px rgba(155, 89, 182, 0.4), inset 0 2px 4px rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.4)' }}>
             <span style={{ fontSize: '28px', color: 'white', fontWeight: '900', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>M</span>
          </div>

@@ -10,18 +10,25 @@ function Marketplace() {
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('Toate');
     const [modal, setModal] = useState({ show: false, message: '', onConfirm: null });
+    const [loading, setLoading] = useState(true); 
 
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
-        fetch('http://localhost:5000/api/resources')
-            .then(res => res.json())
-            .then(data => {
-                setResources(data);
-                setFilteredResources(data); 
-            })
-            .catch(err => console.error("Eroare la resurse:", err));
+        setTimeout(() => {
+            fetch('http://localhost:5000/api/resources')
+                .then(res => res.json())
+                .then(data => {
+                    setResources(data);
+                    setFilteredResources(data); 
+                    setLoading(false); 
+                })
+                .catch(err => {
+                    console.error("Eroare la resurse:", err);
+                    setLoading(false);
+                });
+        }, 600);
 
         if (user) {
             fetch(`http://localhost:5000/api/purchases/${user.id}`)
@@ -152,107 +159,122 @@ function Marketplace() {
             </motion.div>
 
             <div className="grid-container">
-                {filteredResources.map((res, index) => {
-                    const isOwner = user && (res.userId === user.id || myPurchases.includes(res.id));
+                {loading ? (
+                    Array.from({ length: 4 }).map((_, idx) => (
+                        <div key={idx} className="card" style={{ width: '260px', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+                            <div className="skeleton" style={{ height: '150px', width: '100%', marginBottom: '15px', borderRadius: '10px' }}></div>
+                            <div className="skeleton skeleton-title"></div>
+                            <div className="skeleton skeleton-text"></div>
+                            <div className="skeleton skeleton-text" style={{ width: '80%' }}></div>
+                            <div style={{ marginTop: 'auto' }}>
+                                <div className="skeleton skeleton-button"></div>
+                            </div>
+                        </div>
+                    ))
+                ) : filteredResources.length > 0 ? (
+                    filteredResources.map((res, index) => {
+                        const isOwner = user && (res.userId === user.id || myPurchases.includes(res.id));
 
-                    return (
-                        <motion.div 
-                            key={res.id} 
-                            className="card" 
-                            initial={{ opacity: 0, y: 30 }} 
-                            animate={{ opacity: 1, y: 0 }} 
-                            transition={{ duration: 0.4, delay: index * 0.1 }} 
-                            whileHover={{ y: -8, scale: 1.02 }} 
-                            style={{ width: '260px', position: 'relative' }}
-                        >
-                            <span style={{ 
-                                position: 'absolute', 
-                                top: '10px', 
-                                right: '10px', 
-                                background: 'rgba(255,255,255,0.8)', 
-                                padding: '4px 10px', 
-                                borderRadius: '12px', 
-                                fontSize: '12px', 
-                                fontWeight: 'bold' 
-                            }}>
-                                {res.categorie}
-                            </span>
-                            
-                            <div style={{ 
-                                height: '150px', 
-                                background: 'rgba(255,255,255,0.3)', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                marginBottom: '15px', 
-                                borderRadius: '10px' 
-                            }}>
-                                <span style={{ fontSize: '50px' }}>📄</span>
-                            </div>
-                            
-                            <h3 style={{ margin: '10px 0' }}>{res.titlu}</h3>
-                            <p style={{ color: '#555', height: '40px', overflow: 'hidden' }}>{res.descriere}</p>
-                            
-                            <div style={{ marginTop: '15px' }}>
-                                {isOwner ? (
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button 
-                                            onClick={() => descarcaFisier(res.numeFisier)} 
-                                            style={{ 
-                                                flex: 1, 
-                                                backgroundColor: '#27ae60', 
-                                                color: 'white', 
-                                                borderRadius: '8px', 
-                                                padding: '10px', 
-                                                border: 'none', 
-                                                cursor: 'pointer', 
-                                                fontWeight: 'bold' 
-                                            }}
-                                        >
-                                            Descarcă
-                                        </button>
-                                        <button 
-                                            onClick={() => navigate('/learn', { state: { resourceId: res.id, titlu: res.titlu } })} 
-                                            style={{ 
-                                                flex: 1, 
-                                                backgroundColor: '#8e44ad', 
-                                                color: 'white', 
-                                                borderRadius: '8px', 
-                                                padding: '10px', 
-                                                border: 'none', 
-                                                cursor: 'pointer', 
-                                                fontWeight: 'bold' 
-                                            }}
-                                        >
-                                            🧠 Învață
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 'bold', color: '#2980b9', fontSize: '18px' }}>
-                                            {res.pret} pct
-                                        </span>
-                                        <button 
-                                            onClick={() => cumparaMaterial(res.id, res.pret)} 
-                                            style={{ 
-                                                backgroundColor: '#2980b9', 
-                                                color: 'white', 
-                                                borderRadius: '8px', 
-                                                padding: '10px 20px', 
-                                                border: 'none', 
-                                                cursor: 'pointer', 
-                                                fontWeight: 'bold' 
-                                            }}
-                                        >
-                                            Cumpără
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    );
-                })}
-                {filteredResources.length === 0 && <p style={{ fontWeight: 'bold' }}>Niciun rezultat găsit.</p>}
+                        return (
+                            <motion.div 
+                                key={res.id} 
+                                className="card" 
+                                initial={{ opacity: 0, y: 30 }} 
+                                animate={{ opacity: 1, y: 0 }} 
+                                transition={{ duration: 0.4, delay: index * 0.1 }} 
+                                whileHover={{ y: -8, scale: 1.02 }} 
+                                style={{ width: '260px', position: 'relative' }}
+                            >
+                                <span style={{ 
+                                    position: 'absolute', 
+                                    top: '10px', 
+                                    right: '10px', 
+                                    background: 'rgba(255,255,255,0.8)', 
+                                    padding: '4px 10px', 
+                                    borderRadius: '12px', 
+                                    fontSize: '12px', 
+                                    fontWeight: 'bold' 
+                                }}>
+                                    {res.categorie}
+                                </span>
+                                
+                                <div style={{ 
+                                    height: '150px', 
+                                    background: 'rgba(255,255,255,0.3)', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    marginBottom: '15px', 
+                                    borderRadius: '10px' 
+                                }}>
+                                    <span style={{ fontSize: '50px' }}>📄</span>
+                                </div>
+                                
+                                <h3 style={{ margin: '10px 0' }}>{res.titlu}</h3>
+                                <p style={{ color: '#555', height: '40px', overflow: 'hidden' }}>{res.descriere}</p>
+                                
+                                <div style={{ marginTop: '15px' }}>
+                                    {isOwner ? (
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button 
+                                                onClick={() => descarcaFisier(res.numeFisier)} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    backgroundColor: '#27ae60', 
+                                                    color: 'white', 
+                                                    borderRadius: '8px', 
+                                                    padding: '10px', 
+                                                    border: 'none', 
+                                                    cursor: 'pointer', 
+                                                    fontWeight: 'bold' 
+                                                }}
+                                            >
+                                                Descarcă
+                                            </button>
+                                            <button 
+                                                onClick={() => navigate('/learn', { state: { resourceId: res.id, titlu: res.titlu } })} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    backgroundColor: '#8e44ad', 
+                                                    color: 'white', 
+                                                    borderRadius: '8px', 
+                                                    padding: '10px', 
+                                                    border: 'none', 
+                                                    cursor: 'pointer', 
+                                                    fontWeight: 'bold' 
+                                                }}
+                                            >
+                                                🧠 Învață
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 'bold', color: '#2980b9', fontSize: '18px' }}>
+                                                {res.pret} pct
+                                            </span>
+                                            <button 
+                                                onClick={() => cumparaMaterial(res.id, res.pret)} 
+                                                style={{ 
+                                                    backgroundColor: '#2980b9', 
+                                                    color: 'white', 
+                                                    borderRadius: '8px', 
+                                                    padding: '10px 20px', 
+                                                    border: 'none', 
+                                                    cursor: 'pointer', 
+                                                    fontWeight: 'bold' 
+                                                }}
+                                            >
+                                                Cumpără
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        );
+                    })
+                ) : (
+                    <p style={{ fontWeight: 'bold' }}>Niciun rezultat găsit.</p>
+                )}
             </div>
         </motion.div>
     );

@@ -448,8 +448,7 @@ app.post('/api/ai/chat', async (req, res) => {
                             const pdfParser = new PDFParser(this, 1);
                             pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
                             pdfParser.on("pdfParser_dataReady", pdfData => {
-                                const rawText = pdfParser.getRawTextContent();
-                                resolve(rawText.substring(0, 3000));
+                                resolve(pdfParser.getRawTextContent().substring(0, 3000));
                             });
                             pdfParser.loadPDF(filePath);
                         });
@@ -463,9 +462,14 @@ app.post('/api/ai/chat', async (req, res) => {
 
         const systemMessage = {
             role: "system",
-            content: `Ești un profesor universitar de nota 10, prietenos și concis. Te afli pe platforma Mentorium. Răspunzi mereu în LIMBA ROMÂNĂ. Folosești emoji-uri ocazional. Dacă primești un text extras dintr-un curs/poză, folosește-l pentru a răspunde: 
-            """ ${contextText} """
-            Dacă textul e gol, ajută studentul folosind cunoștințele tale generale.`
+            content: `Ești Mentorium AI, un profesor universitar de nota 10, prietenos și concis.
+            Răspunzi mereu în LIMBA ROMÂNĂ și folosești emoji-uri ocazional.
+            
+            REGULĂ ABSOLUTĂ ȘI STRICTĂ: Ești un asistent EXCLUSIV EDUCAȚIONAL. Funcționezi doar în sfera academică, școlară, științifică și de dezvoltare profesională. 
+            Dacă utilizatorul te întreabă absolut orice altceva (ex: rețete de mâncare, reparații auto, bârfe, sport, filme, glume care nu au legătură cu școala), TREBUIE SĂ REFUZI POLITICOS. Îi vei spune clar că rolul tău pe platforma Mentorium este doar să îl ajuți la studiu și să revină la subiecte educaționale.
+            
+            Dacă primești un text extras dintr-un curs/poză, folosește-l pentru a răspunde: \n""" ${contextText} """\n
+            Dacă textul e gol, ajută studentul folosind cunoștințele tale academice.`
         };
 
         const chatHistory = [systemMessage, ...messages];
@@ -476,15 +480,20 @@ app.post('/api/ai/chat', async (req, res) => {
             body: JSON.stringify({
                 model: 'llama3',
                 messages: chatHistory,
-                stream: false
+                stream: true 
             })
         });
 
-        const data = await response.json();
-        res.json({ reply: data.message });
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('Transfer-Encoding', 'chunked');
+
+        for await (const chunk of response.body) {
+            res.write(chunk);
+        }
+        res.end();
 
     } catch (err) {
-        console.error("Eroare la AI Chat:", err);
+        console.error(err);
         res.status(500).json({ error: "Eroare la AI." });
     }
 });
