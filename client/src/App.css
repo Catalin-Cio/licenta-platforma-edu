@@ -343,3 +343,16 @@ body {
   
   h1 { font-size: 3rem !important; }
 }
+
+.mobile-only { 
+  display: none !important; 
+}
+
+@media (max-width: 900px) {
+  .desktop-only { 
+    display: none !important; 
+  }
+  .mobile-only { 
+    display: flex !important; 
+  }
+}

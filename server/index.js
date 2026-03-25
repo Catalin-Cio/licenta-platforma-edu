@@ -46,27 +46,28 @@ app.use(express.json());
 
 const PORT = 5000;
 
-// --- RUTA DE REGISTER CU HASH ---
 app.post('/api/register', async (req, res) => {
   try {
     const { nume, email, parola } = req.body;
     
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(parola)) {
+        return res.status(400).json({ message: "Parola este prea slabă. Trebuie să aibă minim 8 caractere, o literă mare și o cifră." });
+    }
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) return res.status(400).json({ message: "Emailul este deja folosit!" });
 
-    // HASH-UIM PAROLA AICI
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(parola, saltRounds);
-
     const newUser = await User.create({ nume, email, parola: hashedPassword });
     res.status(201).json(newUser);
+    
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Eroare la server" });
   }
 });
 
-// --- RUTA DE LOGIN CARE VERIFICĂ HASH-UL ---
 app.post('/api/login', async (req, res) => {
   try {
     const { email, parola } = req.body;
@@ -74,7 +75,6 @@ app.post('/api/login', async (req, res) => {
     
     if (!user) return res.status(404).json({ message: "Utilizatorul nu există!" });
     
-    // COMPARĂM PAROLA SCRISĂ DE USER CU HASH-UL DIN BAZA DE DATE
     const match = await bcrypt.compare(parola, user.parola);
     if (!match) return res.status(401).json({ message: "Parolă incorectă!" });
     
