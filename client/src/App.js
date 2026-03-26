@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Register from './Register';
 import Login from './Login';
-import Dashboard from './Dashboard';
 import Upload from './Upload';
 import Marketplace from './Marketplace';
 import Profile from './Profile';
@@ -216,7 +215,6 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/profile" element={<Profile />} />
